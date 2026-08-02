@@ -12,6 +12,32 @@ BACKEND_URL = os.environ.get("BACKEND_URL", "https://my-osint-engine.onrender.co
 st.set_page_config(page_title="VoxIntel OSINT Engine", page_icon="🕵️", layout="wide")
 st.title("🇲🇾 VoxIntel: Incident Triage & OSINT Engine")
 st.markdown("Automated fraud analysis powered by Groq Cloud (Llama 3.1 & Whisper), OSINT lookups, and OCR.")
+# Sidebar Telemetry Dashboard
+st.sidebar.title("📊 Live Telemetry Dashboard")
+st.sidebar.markdown("Anonymized threat statistics from recent scans.")
+
+TELEMETRY_URL = BACKEND_URL.replace("/analyze", "/telemetry")
+try:
+    tel_response = requests.get(TELEMETRY_URL, timeout=5)
+    if tel_response.status_code == 200:
+        tel_data = tel_response.json()
+        if tel_data:
+            df = pd.DataFrame(tel_data)
+            
+            # Render Average Confidence
+            avg_conf = int(df['confidence'].mean())
+            st.sidebar.metric("Average Threat Confidence", f"{avg_conf}%")
+            
+            # Render Bar Chart of Scam Types
+            st.sidebar.subheader("Recent Scam Vectors")
+            type_counts = df['scam_type'].value_counts()
+            st.sidebar.bar_chart(type_counts)
+        else:
+            st.sidebar.info("Database is currently empty. Run a scan to populate telemetry.")
+    else:
+        st.sidebar.error("Telemetry offline.")
+except Exception as e:
+    st.sidebar.error("Could not connect to Telemetry database.")
 
 groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 

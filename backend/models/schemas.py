@@ -1,5 +1,9 @@
-from pydantic import BaseModel
-from typing import List, Dict, Any, Union
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any
+
+class TriageRequest(BaseModel):
+    # OWASP A03 Mitigation: Cap input at 5,000 chars to prevent DoS via massive payloads
+    raw_text: str = Field(..., max_length=5000, description="The raw incident text")
 
 class ExtractedIOCs(BaseModel):
     phone_numbers: List[str] = []
@@ -13,11 +17,8 @@ class AIAnalysisReport(BaseModel):
     evidence_breakdown: List[str]
     action_plan: List[str]
 
-class TriageRequest(BaseModel):
-    raw_text: str
-
 class TriageResponse(BaseModel):
     status: str
     extracted_iocs: ExtractedIOCs
-    osint_intelligence: Any
+    osint_intelligence: List[Dict[str, Any]]
     ai_report: AIAnalysisReport

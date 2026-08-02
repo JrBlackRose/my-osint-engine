@@ -7,3 +7,5 @@ requests
 pytesseract
 Pillow
 fpdf2
+pandas
+slowapi
