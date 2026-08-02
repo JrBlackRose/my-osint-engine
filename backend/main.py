@@ -1,3 +1,4 @@
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -16,8 +17,11 @@ limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(
     title="Malaysian OSINT Triage Engine",
     description="Backend API for parsing and triaging local scam indicators.",
-    version="0.3.1"
+    version="0.3.2"
 )
+
+# SECURE PROXY ROUTING: Extracts the TRUE client IP from Render's load balancer, ignoring spoofed headers.
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 # Bind Rate Limiter to FastAPI app
 app.state.limiter = limiter
