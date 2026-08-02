@@ -1,1 +1,8 @@
+fastapi
+uvicorn
+pydantic
 groq
+streamlit
+requests
+pytesseract
+Pillow
