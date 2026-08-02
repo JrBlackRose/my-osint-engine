@@ -14,9 +14,11 @@ async def analyze_threat_context(raw_text: str, osint_data: list) -> Dict[str, A
     1. DYNAMIC LANGUAGE MATCHING: Detect the primary language/dialect of the user's incident description (Bahasa Melayu, English, Manglish, Chinese, Tamil, etc.). Generate the `evidence_breakdown` and `action_plan` in THAT EXACT SAME LANGUAGE.
     
     2. STRICT SCAM CATEGORIZATION RULES:
-       - "Macau Scam": IMPERSONATION of government agencies (LHDN, Inland Revenue, PDRM/Police, Courts, Kastam, Pos Laju) demanding urgent funds to avoid arrest or legal action.
-       - "Job / Investment Scam": Offers for part-time tasks, illegal investment returns, or Telegram crypto schemes.
-       - "APK Phishing": Prompts to download third-party Android apps (.apk).
+       - "Macau Scam": STRICTLY telecommunications fraud impersonating Malaysian authorities (LHDN, PDRM, BNM, Courts, Kastam) to extort money. DO NOT use this for emails.
+       - "Tech Support Scam": Fake virus alerts claiming to be from Microsoft, Apple, or antivirus companies demanding phone calls or remote access.
+       - "Phishing / Credential Harvesting": Emails or SMS pretending to be legitimate services (Coinbase, banks) to steal passwords or crypto.
+       - "Job / Investment Scam": Offers for part-time tasks (Shopee/Lazada VIP), illegal investment returns, or Telegram crypto schemes.
+       - "APK Phishing": STRICTLY involves social engineering to download malicious third-party Android apps (.apk), often masked as cleaning services, wedding invites, or pet shops.
        - "Safe / Unknown": No suspicious indicators.
        
     3. MANDATORY HOTLINE RULE:

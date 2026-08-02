@@ -1,57 +1,67 @@
 import re
 
 def normalize_malay_spoken_numbers(text: str) -> str:
-    """Converts common Malay spoken number words into digits so regex can catch them from Whisper output."""
+    """Converts common Malay spoken number words into digits for Whisper transcriptions."""
     replacements = {
         "kosong": "0", "satu": "1", "dua": "2", "tiga": "3", "empat": "4",
-        "lima": "5", "enam": "6", "tujuh": "7", "lapan": "8", "sembilan": "9",
-        "satu-satunya": "1"
+        "lima": "5", "enam": "6", "tujuh": "7", "lapan": "8", "sembilan": "9"
     }
-    
-    # Simple word substitution for numbers
+
     words = text.split()
     normalized_words = [replacements.get(w.lower(), w) for w in words]
     return " ".join(normalized_words)
 
 def extract_iocs(text: str) -> dict:
-    # First normalize any spoken numbers from audio transcriptions
     processed_text = normalize_malay_spoken_numbers(text)
 
-    phone_pattern = r"(?:\+?60|0060|0)[1]\d{1}(?:[- \s]?)\d{3,4}(?:[- \s]?)\d{4}\b"
-    bank_pattern = r"\b(?:\d[- \s]*){10,14}\b"
+    # 1. URL Pattern (Matches http/https and bare domains like shopee-vip-task88.com/register)
+    url_pattern = r'\b(?:https?://)?(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:/[^\s]*)?\b'
+    
+    # 2. Phone Patterns: Malaysian (01X, +601X, 03) AND US / Toll-Free (1-800-555-0199, +1-800)
+    my_phone_pattern = r"(?:\+?60|0060|0)[1-9]\d{1}(?:[- \s]?)\d{3,4}(?:[- \s]?)\d{4}\b"
+    toll_free_pattern = r"\b(?:\+?1[- \s]?)?1?[- \s]?8[0-9]{2}[- \s]?[0-9]{3}[- \s]?[0-9]{4}\b"
 
-    raw_phones = re.findall(phone_pattern, processed_text)
-    raw_banks = re.findall(bank_pattern, processed_text)
+    # 3. Bank Account Pattern (10 to 14 digits)
+    bank_pattern = r"\b\d{10,14}\b"
 
+    # Extract URLs first
+    raw_urls = re.findall(url_pattern, processed_text)
+    cleaned_urls = [u for u in set(raw_urls) if not u.endswith(('.png', '.jpg', '.jpeg'))]
+
+    # Extract Phones
+    my_phones = re.findall(my_phone_pattern, processed_text)
+    toll_free_phones = re.findall(toll_free_pattern, processed_text)
+    
+    all_raw_phones = my_phones + toll_free_phones
     cleaned_phones = []
-    phone_filter_set = set()
+    phone_digits_set = set()
 
-    for p in raw_phones:
-        clean_p = re.sub(r"[- \s]", "", p)
-        if clean_p.startswith("+60"):
-            local_format = "0" + clean_p[3:]
-            int_format = clean_p[1:]
-        elif clean_p.startswith("60"):
-            local_format = "0" + clean_p[2:]
-            int_format = clean_p
+    for p in all_raw_phones:
+        clean_digits = re.sub(r"[^\d]", "", p)
+        phone_digits_set.add(clean_digits)
+        
+        # Standardize formatting
+        if clean_digits.startswith("60"):
+            cleaned_phones.append("0" + clean_digits[2:])
         else:
-            local_format = clean_p
-            int_format = "60" + clean_p[1:] if clean_p.startswith("0") else clean_p
-            
-        cleaned_phones.append(local_format)
-        phone_filter_set.update([local_format, int_format, clean_p])
+            cleaned_phones.append(p.strip())
 
     cleaned_phones = list(set(cleaned_phones))
 
+    # Extract Bank Accounts (excluding matched phone digit strings)
+    raw_banks = re.findall(bank_pattern, processed_text)
     cleaned_banks = []
+
     for b in raw_banks:
-        clean_b = re.sub(r"[- \s]", "", b)
-        if clean_b not in phone_filter_set:
+        clean_b = re.sub(r"[^\d]", "", b)
+        # Avoid tagging phone numbers as bank accounts
+        if clean_b not in phone_digits_set:
             cleaned_banks.append(clean_b)
 
     cleaned_banks = list(set(cleaned_banks))
 
     return {
         "phone_numbers": cleaned_phones,
-        "bank_accounts": cleaned_banks
+        "bank_accounts": cleaned_banks,
+        "urls": cleaned_urls
     }

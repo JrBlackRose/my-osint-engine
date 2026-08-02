@@ -29,7 +29,8 @@ async def analyze_story(request: TriageRequest):
         status="success",
         extracted_iocs=ExtractedIOCs(
             phone_numbers=raw_iocs["phone_numbers"],
-            bank_accounts=raw_iocs["bank_accounts"]
+            bank_accounts=raw_iocs["bank_accounts"],
+            urls=raw_iocs.get("urls", [])
         ),
         osint_intelligence=enriched_iocs,
         ai_report=AIAnalysisReport(
