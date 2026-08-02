@@ -2,32 +2,33 @@ import streamlit as st
 import requests
 import pytesseract
 from PIL import Image
-import whisper
+from groq import Groq
 import tempfile
 import os
 
 st.set_page_config(page_title="MY OSINT Engine", page_icon="🕵️", layout="wide")
 st.title("🇲🇾 Malaysian Incident Triage & OSINT Engine")
-st.markdown("Automated fraud analysis powered by local AI (Llama 3.1), Whisper Voice AI, OSINT lookups, and OCR.")
+st.markdown("Automated fraud analysis powered by Groq Cloud (Llama 3.1 & Whisper), OSINT lookups, and OCR.")
 
-# Cache the model in memory
-@st.cache_resource
-def load_whisper_model():
-    # UPGRADED: Changed from 'base' to 'small' for better Tamil/Manglish accuracy
-    return whisper.load_model("small")
+groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-# Cache the transcription output so it doesn't re-run while the user is typing corrections
 @st.cache_data
 def transcribe_audio_file(audio_bytes, file_ext):
     with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_ext}") as tmp_file:
         tmp_file.write(audio_bytes)
         tmp_path = tmp_file.name
     
-    model = load_whisper_model()
-    # Forces Whisper to identify the language rather than defaulting to English logic
-    res = model.transcribe(tmp_path)
-    os.remove(tmp_path)
-    return res["text"]
+    try:
+        with open(tmp_path, "rb") as file:
+            transcription = groq_client.audio.transcriptions.create(
+                file=(os.path.basename(tmp_path), file.read()),
+                model="whisper-large-v3",
+            )
+        os.remove(tmp_path)
+        return transcription.text
+    except Exception as e:
+        os.remove(tmp_path)
+        raise e
 
 st.subheader("Report an Incident")
 tab1, tab2, tab3 = st.tabs(["📝 Text Input", "🖼️ Upload Screenshot", "🎙️ Voice Note"])
@@ -48,7 +49,6 @@ with tab2:
             try:
                 extracted_text = pytesseract.image_to_string(image)
                 st.info("Review and edit the extracted text before analyzing:")
-                # Make OCR editable
                 edited_ocr_text = st.text_area("Extracted Text", value=extracted_text, height=150, label_visibility="collapsed")
                 user_story = edited_ocr_text
             except Exception as e:
@@ -61,13 +61,12 @@ with tab3:
     )
     if uploaded_audio is not None:
         st.audio(uploaded_audio)
-        with st.spinner("Transcribing audio using Whisper 'small' model (this may take a moment)..."):
+        with st.spinner("Transcribing audio instantly via Groq Cloud Whisper..."):
             try:
                 file_ext = uploaded_audio.name.split('.')[-1]
                 raw_transcript = transcribe_audio_file(uploaded_audio.getvalue(), file_ext)
                 
                 st.info("Review and edit the transcription below if Whisper missed any details:")
-                # Make Audio transcription editable
                 edited_audio_text = st.text_area("Transcribed Text", value=raw_transcript, height=150, label_visibility="collapsed")
                 user_story = edited_audio_text
             except Exception as e:
@@ -77,7 +76,7 @@ if st.button("Analyze Threat", type="primary"):
     if not user_story.strip():
         st.warning("Please provide text, upload a screenshot, or upload a voice note to analyze.")
     else:
-        with st.spinner("Extracting IOCs, querying OSINT, and running AI reasoning..."):
+        with st.spinner("Extracting IOCs, querying OSINT, and running AI reasoning via Groq..."):
             try:
                 response = requests.post(
                     "http://127.0.0.1:8000/api/analyze",

@@ -1,13 +1,11 @@
 import json
+import os
 from typing import Dict, Any
-import ollama
+from groq import AsyncGroq
 
-from models.schemas import AIAnalysisReport
-
-client = ollama.AsyncClient()
+client = AsyncGroq(api_key=os.environ.get("GROQ_API_KEY"))
 
 async def analyze_threat_context(raw_text: str, osint_data: list) -> Dict[str, Any]:
-    
     system_prompt = """
     You are an expert Malaysian Cybersecurity Forensics AI. 
     Analyze the user's reported incident and the provided OSINT data.
@@ -25,6 +23,14 @@ async def analyze_threat_context(raw_text: str, osint_data: list) -> Dict[str, A
        - The `action_plan` MUST explicitly direct the user to call the National Scam Response Centre (NSRC) hotline at 997 immediately.
        - Example (BM): "Hubungi Pusat Respons Scam Kebangsaan (NSRC) di talian 997 dengan kadar segera."
        - NEVER mention 999 for financial scams.
+    
+    You MUST return the output strictly as a JSON object matching this structure:
+    {
+        "scam_certainty_percentage": 90,
+        "threat_category": "Macau Scam",
+        "evidence_breakdown": ["Point 1", "Point 2"],
+        "action_plan": ["Action 1", "Action 2"]
+    }
     """
 
     user_prompt = f"""
@@ -35,19 +41,18 @@ async def analyze_threat_context(raw_text: str, osint_data: list) -> Dict[str, A
     """
 
     try:
-        response = await client.chat(
-            model="llama3.1",
+        response = await client.chat.completions.create(
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            format=AIAnalysisReport.model_json_schema(),
-            options={"temperature": 0.1}
+            response_format={"type": "json_object"},
+            temperature=0.1
         )
         
-        result = json.loads(response['message']['content'])
+        result = json.loads(response.choices[0].message.content)
         
-        # Programmatic Sanitization Safeguard
         corrected_action_plan = []
         for action in result.get('action_plan', []):
             corrected_action = action.replace('999', '997')
@@ -58,10 +63,10 @@ async def analyze_threat_context(raw_text: str, osint_data: list) -> Dict[str, A
         return result
         
     except Exception as e:
-        print(f"Ollama AI Analysis Error: {e}")
+        print(f"Groq Cloud AI Analysis Error: {e}")
         return {
             "scam_certainty_percentage": 0,
-            "threat_category": "Error - Local LLM Failed",
+            "threat_category": "Error - Cloud LLM Failed",
             "evidence_breakdown": [str(e)],
             "action_plan": ["Sila hubungi NSRC di talian 997 dengan kadar segera / Call NSRC at 997 immediately."]
         }
