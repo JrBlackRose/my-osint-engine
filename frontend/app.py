@@ -2,6 +2,7 @@ from pdf_generator import create_pdf
 import streamlit as st
 import requests
 import pytesseract
+import pandas as pd
 from PIL import Image
 from groq import Groq
 import tempfile
