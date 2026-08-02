@@ -79,7 +79,7 @@ if st.button("Analyze Threat", type="primary"):
         with st.spinner("Extracting IOCs, querying OSINT, and running AI reasoning via Groq..."):
             try:
                 response = requests.post(
-                    "https://my-osint-engine.onrender.com/api/analyze",
+                    "http://127.0.0.1:8000/api/analyze",
                     json={"raw_text": user_story},
                     timeout=120 
                 )

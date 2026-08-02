@@ -24,6 +24,9 @@ def extract_iocs(text: str) -> dict:
     # 3. Bank Account Pattern (10 to 14 digits)
     bank_pattern = r"\b\d{10,14}\b"
 
+    # 4. IP Address Pattern (IPv4)
+    ip_pattern = r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b'
+
     # Extract URLs first
     raw_urls = re.findall(url_pattern, processed_text)
     cleaned_urls = [u for u in set(raw_urls) if not u.endswith(('.png', '.jpg', '.jpeg'))]
@@ -48,6 +51,15 @@ def extract_iocs(text: str) -> dict:
 
     cleaned_phones = list(set(cleaned_phones))
 
+    # Extract IP Addresses
+    raw_ips = re.findall(ip_pattern, processed_text)
+    cleaned_ips = []
+    for ip in raw_ips:
+        # Ensure valid octets (0-255)
+        if all(0 <= int(octet) <= 255 for octet in ip.split('.')):
+            cleaned_ips.append(ip)
+    cleaned_ips = list(set(cleaned_ips))
+
     # Extract Bank Accounts (excluding matched phone digit strings)
     raw_banks = re.findall(bank_pattern, processed_text)
     cleaned_banks = []
@@ -63,5 +75,6 @@ def extract_iocs(text: str) -> dict:
     return {
         "phone_numbers": cleaned_phones,
         "bank_accounts": cleaned_banks,
-        "urls": cleaned_urls
+        "urls": cleaned_urls,
+        "ip_addresses": cleaned_ips
     }

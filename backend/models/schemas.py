@@ -5,6 +5,7 @@ class ExtractedIOCs(BaseModel):
     phone_numbers: List[str] = []
     bank_accounts: List[str] = []
     urls: List[str] = []
+    ip_addresses: List[str] = []
 
 class AIAnalysisReport(BaseModel):
     scam_certainty_percentage: int

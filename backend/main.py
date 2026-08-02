@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from models.schemas import TriageRequest, TriageResponse, ExtractedIOCs, OSINTResult, AIAnalysisReport
+from models.schemas import TriageRequest, TriageResponse, ExtractedIOCs, AIAnalysisReport
 from services.ioc_extractor import extract_iocs
 from services.osint_lookup import run_osint_enrichment
 from services.ai_analyzer import analyze_threat_context
@@ -30,7 +30,8 @@ async def analyze_story(request: TriageRequest):
         extracted_iocs=ExtractedIOCs(
             phone_numbers=raw_iocs["phone_numbers"],
             bank_accounts=raw_iocs["bank_accounts"],
-            urls=raw_iocs.get("urls", [])
+            urls=raw_iocs.get("urls", []),
+            ip_addresses=raw_iocs.get("ip_addresses", [])
         ),
         osint_intelligence=enriched_iocs,
         ai_report=AIAnalysisReport(
