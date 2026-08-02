@@ -12,8 +12,16 @@ from services.database import init_db, log_scan, get_recent_telemetry
 import difflib
 
 # Initialize Rate Limiter (Track by IP)
-limiter = Limiter(key_func=get_remote_address)
+def get_render_real_ip(request: Request) -> str:
+    # Render securely forces the true client IP into this header
+    if "x-real-ip" in request.headers:
+        return request.headers["x-real-ip"]
+    # Fallback for local testing
+    if "x-forwarded-for" in request.headers:
+        return request.headers["x-forwarded-for"].split(",")[-1].strip()
+    return request.client.host
 
+limiter = Limiter(key_func=get_render_real_ip)
 app = FastAPI(
     title="Malaysian OSINT Triage Engine",
     description="Backend API for parsing and triaging local scam indicators.",
