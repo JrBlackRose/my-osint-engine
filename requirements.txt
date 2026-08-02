@@ -6,3 +6,4 @@ streamlit
 requests
 pytesseract
 Pillow
+fpdf2

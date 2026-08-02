@@ -1,3 +1,4 @@
+from pdf_generator import create_pdf
 import streamlit as st
 import requests
 import pytesseract
@@ -5,6 +6,8 @@ from PIL import Image
 from groq import Groq
 import tempfile
 import os
+
+BACKEND_URL = os.environ.get("BACKEND_URL", "https://my-osint-engine.onrender.com/api/analyze")
 
 st.set_page_config(page_title="VoxIntel OSINT Engine", page_icon="🕵️", layout="wide")
 st.title("🇲🇾 VoxIntel: Incident Triage & OSINT Engine")
@@ -17,7 +20,7 @@ def transcribe_audio_file(audio_bytes, file_ext):
     with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_ext}") as tmp_file:
         tmp_file.write(audio_bytes)
         tmp_path = tmp_file.name
-    
+
     try:
         with open(tmp_path, "rb") as file:
             transcription = groq_client.audio.transcriptions.create(
@@ -56,7 +59,7 @@ with tab2:
 
 with tab3:
     uploaded_audio = st.file_uploader(
-        "Upload a WhatsApp voice note or audio recording", 
+        "Upload a WhatsApp voice note or audio recording",
         type=["ogg", "mp3", "wav", "m4a", "aac", "opus", "oga"]
     )
     if uploaded_audio is not None:
@@ -65,7 +68,7 @@ with tab3:
             try:
                 file_ext = uploaded_audio.name.split('.')[-1]
                 raw_transcript = transcribe_audio_file(uploaded_audio.getvalue(), file_ext)
-                
+
                 st.info("Review and edit the transcription below if Whisper missed any details:")
                 edited_audio_text = st.text_area("Transcribed Text", value=raw_transcript, height=150, label_visibility="collapsed")
                 user_story = edited_audio_text
@@ -79,35 +82,45 @@ if st.button("Analyze Threat", type="primary"):
         with st.spinner("Extracting IOCs, querying OSINT, and running AI reasoning via Groq..."):
             try:
                 response = requests.post(
-                    "http://127.0.0.1:8000/api/analyze",
+                    BACKEND_URL,
                     json={"raw_text": user_story},
-                    timeout=120 
+                    timeout=120
                 )
                 if response.status_code == 200:
                     data = response.json()
                     ai = data["ai_report"]
-                    
+
                     st.divider()
                     col1, col2 = st.columns([1, 2])
-                    
+
                     with col1:
                         st.metric("Scam Certainty", f"{ai['scam_certainty_percentage']}%")
                         st.metric("Threat Category", ai['threat_category'])
                         st.subheader("Extracted IOCs")
                         st.json(data["extracted_iocs"])
-                        
+
                     with col2:
                         st.subheader("🧠 AI Evidence Breakdown")
                         for evidence in ai['evidence_breakdown']:
                             st.markdown(f"- {evidence}")
-                            
+
                         st.subheader("🚨 Recommended Action Plan")
                         for action in ai['action_plan']:
                             st.markdown(f"- {action}")
-                            
+
                     with st.expander("View Raw OSINT Intelligence Data"):
                         st.json(data["osint_intelligence"])
+
+                    st.divider()
+                    pdf_bytes = create_pdf(data)
+                    st.download_button(
+                        label="📄 Download Forensic PDF Report for PDRM",
+                        data=pdf_bytes,
+                        file_name="VoxIntel_Forensic_Report.pdf",
+                        mime="application/pdf",
+                        type="primary"
+                    )
                 else:
                     st.error(f"Backend Error: {response.status_code}")
             except Exception as e:
-                st.error(f"Failed to connect to backend. Is Uvicorn running? Error: {e}")
+                st.error(f"Failed to connect to backend. Error: {e}")
