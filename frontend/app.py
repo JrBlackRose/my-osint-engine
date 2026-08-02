@@ -18,7 +18,7 @@ st.sidebar.markdown("Anonymized threat statistics from recent scans.")
 
 TELEMETRY_URL = BACKEND_URL.replace("/analyze", "/telemetry")
 try:
-    tel_response = requests.get(TELEMETRY_URL, timeout=5)
+    tel_response = requests.get(TELEMETRY_URL, timeout=30)
     if tel_response.status_code == 200:
         tel_data = tel_response.json()
         if tel_data:
