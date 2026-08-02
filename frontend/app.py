@@ -79,6 +79,7 @@ if st.button("Analyze Threat", type="primary"):
     if not user_story.strip():
         st.warning("Please provide text, upload a screenshot, or upload a voice note to analyze.")
     else:
+        success_data = None
         with st.spinner("Extracting IOCs, querying OSINT, and running AI reasoning via Groq..."):
             try:
                 response = requests.post(
@@ -87,40 +88,45 @@ if st.button("Analyze Threat", type="primary"):
                     timeout=120
                 )
                 if response.status_code == 200:
-                    data = response.json()
-                    ai = data["ai_report"]
-
-                    st.divider()
-                    col1, col2 = st.columns([1, 2])
-
-                    with col1:
-                        st.metric("Scam Certainty", f"{ai['scam_certainty_percentage']}%")
-                        st.metric("Threat Category", ai['threat_category'])
-                        st.subheader("Extracted IOCs")
-                        st.json(data["extracted_iocs"])
-
-                    with col2:
-                        st.subheader("🧠 AI Evidence Breakdown")
-                        for evidence in ai['evidence_breakdown']:
-                            st.markdown(f"- {evidence}")
-
-                        st.subheader("🚨 Recommended Action Plan")
-                        for action in ai['action_plan']:
-                            st.markdown(f"- {action}")
-
-                    with st.expander("View Raw OSINT Intelligence Data"):
-                        st.json(data["osint_intelligence"])
-
-                    st.divider()
-                    pdf_bytes = create_pdf(data)
-                    st.download_button(
-                        label="📄 Download Forensic PDF Report for PDRM",
-                        data=pdf_bytes,
-                        file_name="VoxIntel_Forensic_Report.pdf",
-                        mime="application/pdf",
-                        type="primary"
-                    )
+                    success_data = response.json()
                 else:
                     st.error(f"Backend Error: {response.status_code}")
             except Exception as e:
                 st.error(f"Failed to connect to backend. Error: {e}")
+
+        # Outside the spinner and request try/except block
+        if success_data:
+            ai = success_data["ai_report"]
+            st.divider()
+            col1, col2 = st.columns([1, 2])
+
+            with col1:
+                st.metric("Scam Certainty", f"{ai['scam_certainty_percentage']}%")
+                st.metric("Threat Category", ai['threat_category'])
+                st.subheader("Extracted IOCs")
+                st.json(success_data["extracted_iocs"])
+
+            with col2:
+                st.subheader("🧠 AI Evidence Breakdown")
+                for evidence in ai['evidence_breakdown']:
+                    st.markdown(f"- {evidence}")
+
+                st.subheader("🚨 Recommended Action Plan")
+                for action in ai['action_plan']:
+                    st.markdown(f"- {action}")
+
+            with st.expander("View Raw OSINT Intelligence Data"):
+                st.json(success_data["osint_intelligence"])
+
+            st.divider()
+            try:
+                pdf_bytes = create_pdf(success_data)
+                st.download_button(
+                    label="📄 Download Forensic PDF Report for PDRM",
+                    data=pdf_bytes,
+                    file_name="VoxIntel_Forensic_Report.pdf",
+                    mime="application/pdf",
+                    type="primary"
+                )
+            except Exception as e:
+                st.error(f"PDF Generation Failed: {e}")

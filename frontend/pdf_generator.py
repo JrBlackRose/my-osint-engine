@@ -1,60 +1,60 @@
 from fpdf import FPDF
-import json
 
 class ForensicPDF(FPDF):
     def header(self):
         self.set_font("helvetica", "B", 16)
-        self.cell(0, 10, "VoxIntel - Official Forensic Incident Report", align="C", new_x="LMARGIN", new_y="NEXT")
+        self.cell(200, 10, txt="VoxIntel - Official Forensic Incident Report", ln=1, align="C")
         self.set_font("helvetica", "I", 10)
-        self.cell(0, 10, "Generated for PDRM / Financial Institution Submission", align="C", new_x="LMARGIN", new_y="NEXT")
+        self.cell(200, 10, txt="Generated for PDRM / Financial Institution Submission", ln=1, align="C")
         self.ln(5)
 
     def footer(self):
         self.set_y(-15)
         self.set_font("helvetica", "I", 8)
-        self.cell(0, 10, f"Page {self.page_no()}", align="C")
+        self.cell(0, 10, txt=f"Page {self.page_no()}", align="C")
 
 def create_pdf(report_data: dict) -> bytes:
     pdf = ForensicPDF()
+    # Explicitly set margins so the library doesn't miscalculate them as 0
+    pdf.set_margins(15, 15, 15)
     pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
     
     ai = report_data.get("ai_report", {})
     iocs = report_data.get("extracted_iocs", {})
 
-    # 1. AI Threat Assessment
-    pdf.set_font("helvetica", "B", 12)
-    pdf.cell(0, 10, "1. AI Threat Assessment", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("helvetica", "", 11)
-    pdf.multi_cell(0, 6, f"Threat Category: {ai.get('threat_category', 'Unknown')}")
-    pdf.multi_cell(0, 6, f"Scam Certainty: {ai.get('scam_certainty_percentage', 0)}%")
-    pdf.ln(5)
+    def safe_text(text):
+        # Strips unsupported characters that cause width-calculation crashes
+        return str(text).replace('\n', ' ').encode('latin-1', 'ignore').decode('latin-1')
 
-    # Evidence Breakdown
-    pdf.set_font("helvetica", "B", 11)
-    pdf.cell(0, 8, "Evidence Breakdown:", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("helvetica", "", 11)
-    for point in ai.get("evidence_breakdown", []):
-        # Encode/decode handles any weird characters Llama might spit out
-        clean_point = point.encode('latin-1', 'replace').decode('latin-1')
-        pdf.multi_cell(0, 6, f"- {clean_point}")
-    pdf.ln(5)
+    def add_section(title, lines):
+        pdf.set_font("helvetica", "B", 12)
+        pdf.cell(0, 10, txt=safe_text(title), ln=1)
+        pdf.set_font("helvetica", "", 11)
+        for line in lines:
+            # pdf.write is immune to the multi_cell horizontal space bug
+            pdf.write(6, txt=safe_text(line))
+            pdf.ln(8) 
+        pdf.ln(5)
 
-    # 2. Extracted Indicators of Compromise
-    pdf.set_font("helvetica", "B", 12)
-    pdf.cell(0, 10, "2. Extracted Indicators of Compromise (IOCs)", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("helvetica", "", 11)
-    pdf.multi_cell(0, 6, f"Phone Numbers: {', '.join(iocs.get('phone_numbers', [])) or 'None'}")
-    pdf.multi_cell(0, 6, f"Bank Accounts: {', '.join(iocs.get('bank_accounts', [])) or 'None'}")
-    pdf.multi_cell(0, 6, f"URLs: {', '.join(iocs.get('urls', [])) or 'None'}")
-    pdf.multi_cell(0, 6, f"IP Addresses: {', '.join(iocs.get('ip_addresses', [])) or 'None'}")
-    pdf.ln(5)
+    add_section("1. AI Threat Assessment", [
+        f"Threat Category: {ai.get('threat_category', 'Unknown')}",
+        f"Scam Certainty: {ai.get('scam_certainty_percentage', 0)}%"
+    ])
 
-    # 3. Action Plan
-    pdf.set_font("helvetica", "B", 12)
-    pdf.cell(0, 10, "3. Recommended Action Plan", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("helvetica", "B", 11)
-    for action in ai.get("action_plan", []):
-        clean_action = action.encode('latin-1', 'replace').decode('latin-1')
-        pdf.multi_cell(0, 6, f"- {clean_action}")
+    add_section("Evidence Breakdown:", [f"- {pt}" for pt in ai.get("evidence_breakdown", [])])
 
-    return bytes(pdf.output())
+    add_section("2. Extracted Indicators of Compromise (IOCs)", [
+        f"Phone Numbers: {', '.join(iocs.get('phone_numbers', [])) or 'None'}",
+        f"Bank Accounts: {', '.join(iocs.get('bank_accounts', [])) or 'None'}",
+        f"URLs: {', '.join(iocs.get('urls', [])) or 'None'}",
+        f"IP Addresses: {', '.join(iocs.get('ip_addresses', [])) or 'None'}"
+    ])
+
+    add_section("3. Recommended Action Plan", [f"- {act}" for act in ai.get("action_plan", [])])
+
+    # Safely output bytes depending on fpdf version
+    try:
+        return bytes(pdf.output(dest='S'))
+    except Exception:
+        return bytes(pdf.output())
