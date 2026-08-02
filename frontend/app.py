@@ -11,6 +11,7 @@ BACKEND_URL = os.environ.get("BACKEND_URL", "https://my-osint-engine.onrender.co
 
 st.set_page_config(page_title="VoxIntel OSINT Engine", page_icon="🕵️", layout="wide")
 st.title("🇲🇾 VoxIntel: Incident Triage & OSINT Engine")
+st.caption("Engineered by Allendraa Anbalagan")
 st.markdown("Automated fraud analysis powered by Groq Cloud (Llama 3.1 & Whisper), OSINT lookups, and OCR.")
 # Sidebar Telemetry Dashboard
 st.sidebar.title("📊 Live Telemetry Dashboard")
@@ -37,7 +38,7 @@ try:
     else:
         st.sidebar.error("Telemetry offline.")
 except Exception as e:
-    st.sidebar.error("Could not connect to Telemetry database.")
+    st.sidebar.error(f"Telemetry Error: {str(e)}")
 
 groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
