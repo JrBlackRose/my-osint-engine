@@ -6,8 +6,8 @@ from groq import Groq
 import tempfile
 import os
 
-st.set_page_config(page_title="MY OSINT Engine", page_icon="🕵️", layout="wide")
-st.title("🇲🇾 Malaysian Incident Triage & OSINT Engine")
+st.set_page_config(page_title="VoxIntel OSINT Engine", page_icon="🕵️", layout="wide")
+st.title("🇲🇾 VoxIntel: Incident Triage & OSINT Engine")
 st.markdown("Automated fraud analysis powered by Groq Cloud (Llama 3.1 & Whisper), OSINT lookups, and OCR.")
 
 groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
