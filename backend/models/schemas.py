@@ -23,5 +23,5 @@ class TriageRequest(BaseModel):
 class TriageResponse(BaseModel):
     status: str
     extracted_iocs: ExtractedIOCs
-    osint_intelligence: Dict[str, Any]
+    osint_intelligence: List[Dict[str, Any]]
     ai_report: AIAnalysisReport
